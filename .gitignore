@@ -12,11 +12,8 @@ build/
 venv/
 env/
 
-# Model weights (large binary files)
-*.pt
-*.pth
-*.onnx
-*.weights
+# Model weights tracked via Git LFS (see .gitattributes)
+# *.pt, *.pth, *.onnx are handled by LFS, not ignored
 
 # Uploaded/output videos
 uploads/
