@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RescueAI - Dog Gait Analysis</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --surface2: #f7fafc;
+      --border: #e2e8f0;
+      --border2: #cbd5e0;
+      --text: #1a202c;
+      --text2: #4a5568;
+      --muted: #718096;
+      --accent: #3b82f6;
+      --accent2: #2563eb;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --green-bd: #bbf7d0;
+      --yellow: #d97706;
+      --yellow-bg: #fffbeb;
+      --yellow-bd: #fde68a;
+      --orange: #ea580c;
+      --orange-bg: #fff7ed;
+      --orange-bd: #fed7aa;
+      --red: #dc2626;
+      --red-bg: #fef2f2;
+      --red-bd: #fecaca;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+    }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    /* HEADER */
+    header {
+      width: 100%;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .hlogo {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .htitle { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .hsub   { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+    .hbadge {
+      margin-left: auto;
+      background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8;
+      font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+    }
+    #new-btn {
+      display: none; margin-left: 12px; padding: 7px 16px;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text2);
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    #new-btn:hover { border-color: var(--accent); color: var(--accent); }
+    /* MAIN */
+    main {
+      width: 100%; max-width: 1120px;
+      padding: 36px 24px 60px;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    /* CARD */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 32px; box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ""; display: inline-block; width: 3px; height: 14px;
+      background: var(--accent); border-radius: 2px;
+    }
+    /* UPLOAD */
+    #drop-zone {
+      border: 2px dashed var(--border2); border-radius: var(--radius);
+      padding: 52px 24px; text-align: center; cursor: pointer;
+      transition: all .2s; background: var(--surface2);
+    }
+    #drop-zone:hover, #drop-zone.drag-over { border-color: var(--accent); background: #eff6ff; }
+    .uicon {
+      width: 64px; height: 64px; background: #eff6ff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; margin: 0 auto 16px;
+    }
+    #drop-zone h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    #drop-zone p  { font-size: 0.85rem; color: var(--muted); }
+    #drop-zone p span { color: var(--accent); font-weight: 600; cursor: pointer; }
+    #drop-zone small { font-size: 0.75rem; color: var(--border2); margin-top: 8px; display: block; }
+    #file-input { display: none; }
+    #file-info {
+      display: none; align-items: center; gap: 12px; margin-top: 14px;
+      padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: var(--radius-sm); font-size: .88rem;
+    }
+    .fi-icon { font-size: 1.5rem; }
+    .fi-name { font-weight: 600; color: var(--text); }
+    .fi-size { color: var(--muted); font-size: .78rem; }
+    .fi-rm   { margin-left: auto; background: none; border: none; color: var(--red); cursor: pointer; font-size: 1rem; padding: 4px; border-radius: 4px; }
+    .fi-rm:hover { background: var(--red-bg); }
+    /* SETTINGS */
+    .settings-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+    .sg { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
+    .sg label { font-size: .78rem; color: var(--text2); font-weight: 600; }
+    .sr { display: flex; align-items: center; gap: 10px; }
+    .sr input[type=range] { flex: 1; accent-color: var(--accent); }
+    .vbadge {
+      background: #eff6ff; color: var(--accent2); font-size: .78rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 6px; min-width: 42px; text-align: center;
+      border: 1px solid #bfdbfe;
+    }
+    /* SUBMIT */
+    #submit-btn {
+      margin-top: 22px; width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border: none; border-radius: var(--radius-sm); color: #fff;
+      font-size: .95rem; font-weight: 700; cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      box-shadow: 0 2px 8px rgba(59,130,246,.35);
+    }
+    #submit-btn:hover:not(:disabled) { opacity: .92; transform: translateY(-1px); }
+    #submit-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    /* PROGRESS */
+    #progress-section { display: none; }
+    .ph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .st { font-size: .88rem; color: var(--text2); display: flex; align-items: center; gap: 8px; }
+    .pt { font-size: .88rem; font-weight: 700; color: var(--accent); }
+    .ptrack { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+    .pfill  { height: 100%; background: linear-gradient(90deg,#3b82f6,#8b5cf6); border-radius: 999px; width: 0%; transition: width .4s ease; }
+    .psteps { display: flex; gap: 8px; margin-top: 16px; }
+    .pstep  { flex: 1; padding: 8px 6px; border-radius: var(--radius-sm); background: var(--surface2); border: 1px solid var(--border); font-size: .72rem; color: var(--muted); text-align: center; transition: all .3s; }
+    .pstep.active { background: #eff6ff; border-color: #bfdbfe; color: var(--accent2); font-weight: 600; }
+    .pstep.done   { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ERROR */
+    #error-banner { display: none; padding: 14px 18px; background: var(--red-bg); border: 1px solid var(--red-bd); border-radius: var(--radius-sm); color: var(--red); font-size: .88rem; }
+    /* RESULTS */
+    #results-section { display: none; flex-direction: column; gap: 24px; }
+    /* VIDEO PLAYER */
+    .video-outer { background: #0f172a; border-radius: var(--radius); overflow: hidden; }
+    .video-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; background: rgba(255,255,255,.05);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .vtitle { color: #e2e8f0; font-size: .82rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .vdot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }
+    .video-wrap { aspect-ratio: 16/9; background: #000; display: flex; align-items: center; justify-content: center; }
+    #output-video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .video-bar {
+      display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+      background: rgba(255,255,255,.04); border-top: 1px solid rgba(255,255,255,.08); flex-wrap: wrap;
+    }
+    .vbtn {
+      background: rgba(255,255,255,.1); border: none; border-radius: 6px;
+      color: #e2e8f0; cursor: pointer; padding: 6px 12px; font-size: .8rem;
+      font-weight: 600; transition: background .15s; display: flex; align-items: center; gap: 5px;
+    }
+    .vbtn:hover { background: rgba(255,255,255,.2); }
+    .vbtn.primary { background: var(--accent); color: #fff; }
+    .vbtn.primary:hover { background: var(--accent2); }
+    .vtime { color: #94a3b8; font-size: .78rem; margin-left: auto; font-variant-numeric: tabular-nums; }
+    /* GAIT REPORT */
+    .verdict {
+      border-radius: var(--radius); padding: 22px 28px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .verdict-icon { font-size: 2.6rem; flex-shrink: 0; }
+    .verdict-label { font-size: 1.4rem; font-weight: 800; }
+    .verdict-sub   { font-size: .88rem; margin-top: 4px; opacity: .8; }
+    .verdict-right { margin-left: auto; text-align: right; flex-shrink: 0; }
+    .sev-lbl { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; opacity: .7; }
+    .sev-val { font-size: 1.4rem; font-weight: 800; }
+    /* METRICS ROW */
+    .metrics-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    @media(max-width:800px){ .metrics-row { grid-template-columns: repeat(2,1fr); } }
+    .mc {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 18px;
+    }
+    .mc-lbl { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .mc-val { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+    .mc-unit{ font-size: .75rem; color: var(--muted); font-weight: 400; }
+    .mc-sub { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+    /* LEG DIAGRAM */
+    .leg-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; padding: 16px 0; }
+    .leg-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .leg-dot {
+      width: 54px; height: 54px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: 800; color: #fff; transition: all .3s;
+    }
+    .leg-dot.affected { box-shadow: 0 0 0 4px rgba(220,38,38,.2), 0 0 20px rgba(220,38,38,.25); }
+    .leg-dot.c-normal   { background: var(--green); }
+    .leg-dot.c-mild     { background: var(--yellow); }
+    .leg-dot.c-moderate { background: var(--orange); }
+    .leg-dot.c-severe   { background: var(--red); }
+    .leg-name  { font-size: .78rem; font-weight: 600; color: var(--text2); text-align: center; }
+    .leg-badge { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    /* BAR CHART */
+    .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 130px; padding: 0 4px; }
+    .bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .bar-track { flex: 1; width: 100%; background: var(--border); border-radius: 6px 6px 0 0; display: flex; align-items: flex-end; }
+    .bar-fill  { width: 100%; border-radius: 6px 6px 0 0; transition: height .6s cubic-bezier(.34,1.56,.64,1); min-height: 4px; }
+    .bar-val   { font-size: .72rem; font-weight: 700; color: var(--text2); }
+    .bar-lbl   { font-size: .7rem; color: var(--muted); }
+    /* SI BARS */
+    .si-row { margin-bottom: 12px; }
+    .si-hdr { display: flex; justify-content: space-between; font-size: .8rem; margin-bottom: 5px; }
+    .si-lbl { color: var(--text2); font-weight: 500; }
+    .si-val { font-weight: 700; }
+    .si-track { height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .si-fill  { height: 100%; border-radius: 999px; transition: width .6s ease; }
+    /* FINDINGS */
+    .finding {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 12px 14px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border);
+      margin-bottom: 8px; font-size: .85rem;
+    }
+    .finding-ico { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .finding-txt { color: var(--text2); line-height: 1.5; }
+    /* STAT TABLE */
+    .stbl { width: 100%; border-collapse: collapse; }
+    .stbl tr { border-bottom: 1px solid var(--border); }
+    .stbl tr:last-child { border-bottom: none; }
+    .stbl td { padding: 10px 4px; font-size: .85rem; }
+    .stbl td:first-child { color: var(--muted); }
+    .stbl td:last-child  { font-weight: 700; text-align: right; color: var(--text); }
+    /* TWO COL */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media(max-width:700px){ .two-col { grid-template-columns: 1fr; } }
+    /* COMP SIGNS */
+    .comp-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border); margin-bottom: 8px;
+    }
+    .comp-lbl { font-size: .85rem; color: var(--text2); }
+    .comp-val { font-size: .85rem; font-weight: 700; }
+    .comp-bar { height: 4px; border-radius: 999px; background: var(--border); margin-top: 4px; width: 80px; }
+    .comp-fill{ height: 100%; border-radius: 999px; }
+    /* LEGEND */
+    .legend-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 8px; }
+    .legend-item {
+      display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--text2);
+      padding: 5px 8px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border);
+    }
+    .legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    /* SECTION DIVIDER */
+    .sdiv { display: flex; align-items: center; gap: 12px; margin: 4px 0; }
+    .sdiv span { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); white-space: nowrap; }
+    .sdiv::before, .sdiv::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="hlogo">&#x1F43E;</div>
+  <div>
+    <div class="htitle">RescueAI</div>
+    <div class="hsub">Stray Dog Injury Detection System</div>
+  </div>
+  <div class="hbadge">YOLOv8 Pose &middot; 24 Keypoints</div>
+  <button id="new-btn" onclick="resetAll()">&#8635; New Analysis</button>
+</header>
+
+<main>
+
+  <!-- Upload card -->
+  <div class="card" id="upload-card">
+    <div class="card-title">Upload Video for Analysis</div>
+    <div id="drop-zone">
+      <div class="uicon">&#x1F4F9;</div>
+      <h3>Drop your video here</h3>
+      <p>or <span id="browse-link">click to browse</span></p>
+      <small>Supported: MP4 &middot; AVI &middot; MOV &middot; MKV &middot; WEBM</small>
+      <input type="file" id="file-input" accept="video/*" />
+    </div>
+    <div id="file-info">
+      <span class="fi-icon">&#x1F3AC;</span>
+      <div>
+        <div class="fi-name" id="fi-name"></div>
+        <div class="fi-size" id="fi-size"></div>
+      </div>
+      <button class="fi-rm" id="fi-rm" title="Remove">&#x2715;</button>
+    </div>
+    <div class="settings-row">
+      <div class="sg">
+        <label>Box Confidence</label>
+        <div class="sr">
+          <input type="range" id="box-conf" min="0.1" max="0.9" step="0.05" value="0.30" />
+          <span class="vbadge" id="box-conf-val">0.30</span>
+        </div>
+      </div>
+      <div class="sg">
+        <label>Keypoint Confidence</label>
+        <div class="sr">
+          <input type="range" id="kpt-conf" min="0.1" max="0.9" step="0.05" value="0.50" />
+          <span class="vbadge" id="kpt-conf-val">0.50</span>
+        </div>
+      </div>
+      <div class="sg">
+        <label>IoU Threshold</label>
+        <div class="sr">
+          <input type="range" id="iou-thresh" min="0.1" max="0.9" step="0.05" value="0.55" />
+          <span class="vbadge" id="iou-thresh-val">0.55</span>
+        </div>
+      </div>
+    </div>
+    <button id="submit-btn" disabled>&#x25B6;&#xFE0F; Run Gait Analysis</button>
+  </div>
+
+  <!-- Error banner -->
+  <div id="error-banner"></div>
+
+  <!-- Progress card -->
+  <div class="card" id="progress-section">
+    <div class="card-title">Processing Video</div>
+    <div class="ph">
+      <span class="st">
+        <span class="spinner" id="spinner-el"></span>
+        <span id="status-text">Initialising&hellip;</span>
+      </span>
+      <span class="pt" id="pct-text">0%</span>
+    </div>
+    <div class="ptrack"><div class="pfill" id="progress-fill"></div></div>
+    <div class="psteps">
+      <div class="pstep" id="step-upload">&#x2191; Upload</div>
+      <div class="pstep" id="step-detect">&#x1F50D; Detection</div>
+      <div class="pstep" id="step-pose">&#x1F9B4; Pose Est.</div>
+      <div class="pstep" id="step-gait">&#x1F4CA; Gait Analysis</div>
+      <div class="pstep" id="step-done">&#x2713; Complete</div>
+    </div>
+  </div>
+
+  <!-- Results section -->
+  <div id="results-section">
+
+    <!-- Video player -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="video-outer">
+        <div class="video-topbar">
+          <div class="vtitle">
+            <div class="vdot"></div>
+            Processed Output &mdash; Pose Overlay &amp; Gait Analysis
+          </div>
+          <span id="vid-badge" style="font-size:.72rem;color:#94a3b8;"></span>
+        </div>
+        <div class="video-wrap">
+          <video id="output-video" controls playsinline preload="auto"></video>
+        </div>
+        <div class="video-bar">
+          <button class="vbtn" id="btn-play">&#9654; Play</button>
+          <button class="vbtn" id="btn-restart">&#x23EE; Restart</button>
+          <button class="vbtn" id="btn-loop">&#x1F501; Loop: Off</button>
+          <button class="vbtn" id="btn-speed">1x Speed</button>
+          <a id="download-btn" class="vbtn primary" href="#" download>&#x2B07; Download</a>
+          <span class="vtime" id="vtime">0:00 / 0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gait report injected here -->
+    <div id="gait-report"></div>
+
+  </div>
+
+  <!-- Keypoint legend -->
+  <div class="card">
+    <div class="card-title">Keypoint Legend</div>
+    <div class="legend-grid" id="legend-grid"></div>
+  </div>
+
+</main>
+</body>
+</html>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const API = '';
+
+const KEYPOINTS = [
+  { name:'L Front Paw',   hex:'d82400' }, { name:'L Front Knee',  hex:'d82400' },
+  { name:'L Front Elbow', hex:'d82400' }, { name:'L Rear Paw',    hex:'fcfc00' },
+  { name:'L Rear Knee',   hex:'fcfc00' }, { name:'L Rear Elbow',  hex:'fcfc00' },
+  { name:'R Front Paw',   hex:'48b455' }, { name:'R Front Knee',  hex:'48b455' },
+  { name:'R Front Elbow', hex:'48b455' }, { name:'R Rear Paw',    hex:'0090aa' },
+  { name:'R Rear Knee',   hex:'0090aa' }, { name:'R Rear Elbow',  hex:'0090aa' },
+  { name:'Tail Base',     hex:'d848ff' }, { name:'Tail End',      hex:'d848ff' },
+  { name:'L Ear Base',    hex:'fc90aa' }, { name:'R Ear Base',    hex:'006caa' },
+  { name:'Nose',          hex:'d89000' }, { name:'Chin',          hex:'d89000' },
+  { name:'L Ear Tip',     hex:'fc90aa' }, { name:'R Ear Tip',     hex:'006caa' },
+  { name:'L Eye',         hex:'ededed' }, { name:'R Eye',         hex:'ededed' },
+  { name:'Withers',       hex:'a9d08e' }, { name:'Throat',        hex:'a9d08e' },
+];
+
+const LEG_FULL = { LF:'Left Front', RF:'Right Front', LR:'Left Rear', RR:'Right Rear' };
+
+const SEV_COLORS = {
+  Normal:       { text:'#16a34a', bg:'#f0fdf4', bd:'#bbf7d0', cls:'c-normal'   },
+  Mild:         { text:'#d97706', bg:'#fffbeb', bd:'#fde68a', cls:'c-mild'     },
+  Moderate:     { text:'#ea580c', bg:'#fff7ed', bd:'#fed7aa', cls:'c-moderate' },
+  Severe:       { text:'#dc2626', bg:'#fef2f2', bd:'#fecaca', cls:'c-severe'   },
+  'Analysing...':{ text:'#718096', bg:'#f7fafc', bd:'#e2e8f0', cls:'c-normal'  },
+};
+
+// ── Build keypoint legend ─────────────────────────────────────────────────────
+const legendGrid = document.getElementById('legend-grid');
+KEYPOINTS.forEach((kp, i) => {
+  const el = document.createElement('div');
+  el.className = 'legend-item';
+  el.innerHTML = `<div class="legend-dot" style="background:#${kp.hex}"></div><span>${i}: ${kp.name}</span>`;
+  legendGrid.appendChild(el);
+});
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const dropZone    = document.getElementById('drop-zone');
+const browseLink  = document.getElementById('browse-link');
+const fileInput   = document.getElementById('file-input');
+const fileInfo    = document.getElementById('file-info');
+const fiName      = document.getElementById('fi-name');
+const fiSize      = document.getElementById('fi-size');
+const fiRm        = document.getElementById('fi-rm');
+const submitBtn   = document.getElementById('submit-btn');
+const errorBanner = document.getElementById('error-banner');
+const progressSec = document.getElementById('progress-section');
+const statusText  = document.getElementById('status-text');
+const pctText     = document.getElementById('pct-text');
+const progressFill= document.getElementById('progress-fill');
+const resultsSec  = document.getElementById('results-section');
+const outputVideo = document.getElementById('output-video');
+const downloadBtn = document.getElementById('download-btn');
+const newBtn      = document.getElementById('new-btn');
+const vtimeEl     = document.getElementById('vtime');
+const vidBadge    = document.getElementById('vid-badge');
+
+// ── Slider bindings ───────────────────────────────────────────────────────────
+[['box-conf','box-conf-val'],['kpt-conf','kpt-conf-val'],['iou-thresh','iou-thresh-val']].forEach(([id,vid]) => {
+  const s = document.getElementById(id), b = document.getElementById(vid);
+  s.addEventListener('input', () => { b.textContent = parseFloat(s.value).toFixed(2); });
+});
+
+// ── File handling ─────────────────────────────────────────────────────────────
+let selectedFile = null;
+
+function fmtBytes(b) {
+  return b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB';
+}
+
+function setFile(f) {
+  if (!f) return;
+  selectedFile = f;
+  fiName.textContent = f.name;
+  fiSize.textContent = fmtBytes(f.size);
+  fileInfo.style.display = 'flex';
+  submitBtn.disabled = false;
+  hideError();
+}
+
+function clearFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  fileInfo.style.display = 'none';
+  submitBtn.disabled = true;
+}
+
+browseLink.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', (e) => { if (e.target === dropZone || e.target.tagName === 'H3' || e.target.tagName === 'SMALL') fileInput.click(); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+fiRm.addEventListener('click', (e) => { e.stopPropagation(); clearFile(); });
+
+dropZone.addEventListener('dragover',  (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('video/')) setFile(f);
+  else showError('Please drop a valid video file (MP4, AVI, MOV, MKV, WEBM).');
+});
+
+// ── Error helpers ─────────────────────────────────────────────────────────────
+function showError(msg) { errorBanner.innerHTML = '&#9888; ' + msg; errorBanner.style.display = 'block'; }
+function hideError()    { errorBanner.style.display = 'none'; }
+
+// ── Progress steps ────────────────────────────────────────────────────────────
+function setStep(pct) {
+  const steps = ['step-upload','step-detect','step-pose','step-gait','step-done'];
+  const thresholds = [5, 25, 60, 90, 100];
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    if (pct >= thresholds[i]) el.classList.add('done');
+    else if (pct >= (thresholds[i-1] || 0)) el.classList.add('active');
+  });
+}
+
+function setStatus(msg, pct) {
+  statusText.textContent = msg;
+  pctText.textContent    = Math.round(pct) + '%';
+  progressFill.style.width = pct + '%';
+  setStep(pct);
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+let pollInterval = null;
+
+submitBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  hideError();
+
+  progressSec.style.display = 'block';
+  resultsSec.style.display  = 'none';
+  submitBtn.disabled = true;
+  setStatus('Uploading video…', 2);
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+
+  let jobId;
+  try {
+    const res = await fetch(`${API}/upload`, { method:'POST', body:fd });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Upload failed'); }
+    const data = await res.json();
+    jobId = data.job_id;
+  } catch(e) {
+    showError('Upload error: ' + e.message);
+    progressSec.style.display = 'none';
+    submitBtn.disabled = false;
+    return;
+  }
+
+  setStatus('Queued — waiting for processing…', 8);
+
+  pollInterval = setInterval(async () => {
+    try {
+      const res  = await fetch(`${API}/status/${jobId}`);
+      const data = await res.json();
+
+      if (data.status === 'error') {
+        clearInterval(pollInterval);
+        showError('Processing error: ' + (data.error || 'Unknown error'));
+        progressSec.style.display = 'none';
+        submitBtn.disabled = false;
+        return;
+      }
+
+      const pct = data.progress || 0;
+      const msg = data.status === 'queued'     ? 'Queued — waiting…'       :
+                  data.status === 'processing'  ? 'Running inference…'      : 'Finalising output…';
+      setStatus(msg, pct);
+
+      if (data.status === 'done') {
+        clearInterval(pollInterval);
+        setStatus('Complete!', 100);
+        await showResults(jobId);
+      }
+    } catch(_) { /* network hiccup — keep polling */ }
+  }, 1000);
+});
+
+// ── Show results ──────────────────────────────────────────────────────────────
+async function showResults(jobId) {
+  // Fetch summary
+  let summary = null;
+  try {
+    const res = await fetch(`${API}/summary/${jobId}`);
+    summary = await res.json();
+  } catch(_) {}
+
+  // ── Video setup ────────────────────────────────────────────────────────────
+  const videoUrl = `${API}/result/${jobId}`;
+  outputVideo.src = videoUrl;
+  downloadBtn.href = videoUrl;
+  downloadBtn.setAttribute('download', `rescueai_${jobId.slice(0,8)}.mp4`);
+
+  // Video event listeners
+  outputVideo.addEventListener('loadedmetadata', () => {
+    updateTime();
+    vidBadge.textContent = fmtDuration(outputVideo.duration);
+  });
+  outputVideo.addEventListener('timeupdate', updateTime);
+  outputVideo.addEventListener('play',  () => { document.getElementById('btn-play').textContent = '⏸ Pause'; });
+  outputVideo.addEventListener('pause', () => { document.getElementById('btn-play').textContent = '▶ Play'; });
+  outputVideo.addEventListener('ended', () => { document.getElementById('btn-play').textContent = '▶ Play'; });
+
+  // Video control buttons
+  document.getElementById('btn-play').onclick = () => {
+    outputVideo.paused ? outputVideo.play() : outputVideo.pause();
+  };
+  document.getElementById('btn-restart').onclick = () => {
+    outputVideo.currentTime = 0; outputVideo.play();
+  };
+
+  let loopOn = false;
+  document.getElementById('btn-loop').onclick = () => {
+    loopOn = !loopOn;
+    outputVideo.loop = loopOn;
+    document.getElementById('btn-loop').textContent = loopOn ? '🔁 Loop: On' : '🔁 Loop: Off';
+  };
+
+  const speeds = [0.25, 0.5, 1, 1.5, 2];
+  let speedIdx = 2;
+  document.getElementById('btn-speed').onclick = () => {
+    speedIdx = (speedIdx + 1) % speeds.length;
+    outputVideo.playbackRate = speeds[speedIdx];
+    document.getElementById('btn-speed').textContent = speeds[speedIdx] + 'x Speed';
+  };
+
+  // Auto-play
+  outputVideo.play().catch(() => {});
+
+  // ── Render gait report ─────────────────────────────────────────────────────
+  if (summary) renderGaitReport(summary);
+
+  // Show results, hide upload card
+  resultsSec.style.display = 'flex';
+  document.getElementById('upload-card').style.display = 'none';
+  newBtn.style.display = 'inline-block';
+  progressSec.style.display = 'none';
+  resultsSec.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function updateTime() {
+  vtimeEl.textContent = fmtDuration(outputVideo.currentTime) + ' / ' + fmtDuration(outputVideo.duration || 0);
+}
+
+function fmtDuration(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return m + ':' + String(sec).padStart(2,'0');
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetAll() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  clearFile();
+  hideError();
+  outputVideo.pause();
+  outputVideo.src = '';
+  resultsSec.style.display  = 'none';
+  progressSec.style.display = 'none';
+  document.getElementById('upload-card').style.display = 'block';
+  document.getElementById('gait-report').innerHTML = '';
+  newBtn.style.display = 'none';
+  submitBtn.disabled = true;
+  setStatus('Initialising…', 0);
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+// ── Gait Report Renderer ──────────────────────────────────────────────────────
+function renderGaitReport(summary) {
+  const g   = summary.gait_assessment || {};
+  const sev = g.severity || 'Normal';
+  const sc  = SEV_COLORS[sev] || SEV_COLORS['Normal'];
+  const isLimping = g.is_limping;
+  const affLeg    = g.affected_leg;
+
+  const container = document.getElementById('gait-report');
+  container.innerHTML = '';
+
+  // ── 1. Verdict banner ──────────────────────────────────────────────────────
+  const verdictCard = makeCard('');
+  verdictCard.style.borderColor = sc.bd;
+  verdictCard.style.background  = sc.bg;
+
+  const icon = isLimping ? '&#x26A0;&#xFE0F;' : '&#x2705;';
+  const legText = affLeg ? `Primary affected limb: <strong>${LEG_FULL[affLeg] || affLeg}</strong>` : 'No limping detected';
+
+  verdictCard.innerHTML = `
+    <div class="verdict" style="padding:0;">
+      <div class="verdict-icon">${icon}</div>
+      <div>
+        <div class="verdict-label" style="color:${sc.text}">${g.label || sev}</div>
+        <div class="verdict-sub" style="color:${sc.text}">${legText}</div>
+      </div>
+      <div class="verdict-right">
+        <div class="sev-lbl" style="color:${sc.text}">Severity</div>
+        <div class="sev-val" style="color:${sc.text}">${sev}</div>
+      </div>
+    </div>`;
+  container.appendChild(verdictCard);
+
+  // ── 2. Key metrics row ─────────────────────────────────────────────────────
+  const metricsCard = makeCard('Key Metrics');
+  const detRate = summary.detection_rate || 0;
+  const avgKpts = summary.avg_kpts_per_frame || 0;
+  const frames  = summary.frames_processed || 0;
+  const outMB   = summary.output_size_mb || 0;
+
+  const maxSI = Math.max(
+    ...[g.si_step, g.si_stance, g.si_angle].flatMap(o => o ? Object.values(o) : [0])
+  );
+  const siColor = maxSI >= 30 ? 'var(--red)' : maxSI >= 15 ? 'var(--orange)' : 'var(--green)';
+
+  metricsCard.innerHTML += `
+    <div class="metrics-row">
+      <div class="mc">
+        <div class="mc-lbl">Detection Rate</div>
+        <div class="mc-val" style="color:${detRate>70?'var(--green)':'var(--orange)'}">
+          ${detRate}<span class="mc-unit">%</span>
+        </div>
+        <div class="mc-sub">Frames with dog detected</div>
+      </div>
+      <div class="mc">
+        <div class="mc-lbl">Max Symmetry Index</div>
+        <div class="mc-val" style="color:${siColor}">
+          ${maxSI.toFixed(1)}<span class="mc-unit">%</span>
+        </div>
+        <div class="mc-sub">&gt;15% asymmetric &middot; &gt;30% severe</div>
+      </div>
+      <div class="mc">
+        <div class="mc-lbl">Avg Keypoints / Frame</div>
+        <div class="mc-val">${avgKpts}<span class="mc-unit">pts</span></div>
+        <div class="mc-sub">Out of 24 total keypoints</div>
+      </div>
+      <div class="mc">
+        <div class="mc-lbl">Frames Analysed</div>
+        <div class="mc-val">${frames}</div>
+        <div class="mc-sub">Output: ${outMB} MB</div>
+      </div>
+    </div>`;
+  container.appendChild(metricsCard);
+
+  // ── 3. Limb status diagram ─────────────────────────────────────────────────
+  const limbCard = makeCard('Limb Status Diagram');
+  const legGrid  = document.createElement('div');
+  legGrid.className = 'leg-grid';
+
+  ['LF','RF','LR','RR'].forEach(leg => {
+    const isAff = leg === affLeg;
+    const dotSev = isAff ? sev : 'Normal';
+    const dotSc  = SEV_COLORS[dotSev] || SEV_COLORS['Normal'];
+    const item = document.createElement('div');
+    item.className = 'leg-item';
+    item.innerHTML = `
+      <div class="leg-dot ${dotSc.cls}${isAff?' affected':''}">
+        ${leg}
+      </div>
+      <div class="leg-name">${LEG_FULL[leg]}</div>
+      ${isAff
+        ? `<span class="leg-badge" style="background:${sc.bg};color:${sc.text};border:1px solid ${sc.bd}">&#x26A0; Affected</span>`
+        : `<span class="leg-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)">&#x2713; Normal</span>`
+      }`;
+    legGrid.appendChild(item);
+  });
+
+  limbCard.appendChild(legGrid);
+
+  // Legend
+  const legLegend = document.createElement('div');
+  legLegend.style.cssText = 'display:flex;gap:16px;justify-content:center;font-size:.78rem;color:var(--muted);margin-top:8px;';
+  legLegend.innerHTML = `
+    <span><span style="color:var(--green)">&#x25CF;</span> Normal</span>
+    <span><span style="color:var(--yellow)">&#x25CF;</span> Mild</span>
+    <span><span style="color:var(--orange)">&#x25CF;</span> Moderate</span>
+    <span><span style="color:var(--red)">&#x25CF;</span> Severe</span>`;
+  limbCard.appendChild(legLegend);
+  container.appendChild(limbCard);
+
+  // ── 4. Step height + Knee angle charts ────────────────────────────────────
+  const chartsRow = document.createElement('div');
+  chartsRow.className = 'two-col';
+
+  // Step height bar chart
+  const stepCard = makeCard('Step Height per Leg');
+  const stepHeights = g.step_heights || {};
+  const maxSH = Math.max(...Object.values(stepHeights), 1);
+  stepCard.appendChild(makeBarChart(
+    ['LF','RF','LR','RR'],
+    leg => stepHeights[leg] || 0,
+    maxSH,
+    leg => leg === affLeg ? sc.text : '#3b82f6',
+    v => Math.round(v) + 'px',
+    'Lower lift = reduced weight-bearing on that limb'
+  ));
+  chartsRow.appendChild(stepCard);
+
+  // Knee angle bar chart
+  const angleCard = makeCard('Knee Joint Angle (ROM)');
+  const kneeAngles = g.knee_angles || {};
+  angleCard.appendChild(makeBarChart(
+    ['LF','RF','LR','RR'],
+    leg => kneeAngles[leg] || 0,
+    180,
+    leg => leg === affLeg ? sc.text : '#8b5cf6',
+    v => Math.round(v) + '\u00b0',
+    'Reduced angle = guarding / restricted range of motion'
+  ));
+  chartsRow.appendChild(angleCard);
+  container.appendChild(chartsRow);
+
+  // ── 5. Symmetry Index bars ─────────────────────────────────────────────────
+  const siCard = makeCard('Symmetry Index (SI) — 0% = perfect symmetry');
+  const siData = [
+    { label:'Step Height SI — Front (LF/RF)',  val: (g.si_step   || {})['LF/RF'] || 0 },
+    { label:'Step Height SI — Rear (LR/RR)',   val: (g.si_step   || {})['LR/RR'] || 0 },
+    { label:'Stance Ratio SI — Front (LF/RF)', val: (g.si_stance || {})['LF/RF'] || 0 },
+    { label:'Stance Ratio SI — Rear (LR/RR)',  val: (g.si_stance || {})['LR/RR'] || 0 },
+    { label:'Joint Angle SI — Front (LF/RF)',  val: (g.si_angle  || {})['LF/RF'] || 0 },
+    { label:'Joint Angle SI — Rear (LR/RR)',   val: (g.si_angle  || {})['LR/RR'] || 0 },
+  ];
+
+  const siGrid = document.createElement('div');
+  siGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0 28px;';
+  siData.forEach(d => {
+    const pct   = Math.min(d.val, 100);
+    const color = d.val >= 30 ? 'var(--red)' : d.val >= 15 ? 'var(--orange)' : 'var(--green)';
+    const row   = document.createElement('div');
+    row.className = 'si-row';
+    row.innerHTML = `
+      <div class="si-hdr">
+        <span class="si-lbl">${d.label}</span>
+        <span class="si-val" style="color:${color}">${d.val.toFixed(1)}%</span>
+      </div>
+      <div class="si-track">
+        <div class="si-fill" style="width:${pct}%;background:${color}"></div>
+      </div>`;
+    siGrid.appendChild(row);
+  });
+
+  const siNote = document.createElement('p');
+  siNote.style.cssText = 'font-size:.75rem;color:var(--muted);margin-top:12px;';
+  siNote.textContent = 'SI > 15% = asymmetric gait  \u00b7  SI > 30% = severe asymmetry';
+  siCard.appendChild(siGrid);
+  siCard.appendChild(siNote);
+  container.appendChild(siCard);
+
+  // ── 6. Compensatory signs + Stance ratios ─────────────────────────────────
+  const compRow = document.createElement('div');
+  compRow.className = 'two-col';
+
+  // Compensatory signs
+  const compCard = makeCard('Compensatory Signs');
+  const headBob  = g.head_bob || 0;
+  const hipHike  = g.hip_hike || 0;
+  compCard.appendChild(makeCompSign(
+    'Head Bob', 'Nose vertical oscillation (front-leg indicator)',
+    headBob, 8, 20, 'px'
+  ));
+  compCard.appendChild(makeCompSign(
+    'Hip Hike', 'Hip vertical oscillation (rear-leg indicator)',
+    hipHike, 8, 20, 'px'
+  ));
+  compRow.appendChild(compCard);
+
+  // Stance ratios
+  const stanceCard = makeCard('Stance Ratio per Leg');
+  const stanceRatios = g.stance_ratios || {};
+  ['LF','RF','LR','RR'].forEach(leg => {
+    const val   = (stanceRatios[leg] || 0.5) * 100;
+    const isAff = leg === affLeg;
+    const color = isAff ? sc.text : 'var(--green)';
+    stanceCard.appendChild(makeCompSign(
+      LEG_FULL[leg], 'Ground contact fraction',
+      val, 55, 75, '%', color
+    ));
+  });
+  compRow.appendChild(stanceCard);
+  container.appendChild(compRow);
+
+  // ── 7. Clinical findings ───────────────────────────────────────────────────
+  if (g.reasons && g.reasons.length > 0) {
+    const findCard = makeCard('Clinical Findings');
+    findCard.style.borderColor = sc.bd;
+    g.reasons.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'finding';
+      item.innerHTML = `<span class="finding-ico" style="color:${sc.text}">&#x26A0;</span><span class="finding-txt">${r}</span>`;
+      findCard.appendChild(item);
+    });
+    container.appendChild(findCard);
+  }
+
+  // ── 8. Processing stats ────────────────────────────────────────────────────
+  const statsCard = makeCard('Processing Statistics');
+  const rows = [
+    ['Total Frames',          summary.total_frames],
+    ['Frames Processed',      summary.frames_processed],
+    ['Frames with Dog',       summary.frames_with_dog],
+    ['Detection Rate',        (summary.detection_rate || 0) + '%'],
+    ['Avg Dogs / Frame',      summary.avg_dogs_per_frame],
+    ['Avg Keypoints / Frame', summary.avg_kpts_per_frame],
+    ['Output File Size',      (summary.output_size_mb || 0) + ' MB'],
+  ];
+  const tbl = document.createElement('table');
+  tbl.className = 'stbl';
+  rows.forEach(([lbl, val]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${lbl}</td><td>${val ?? '—'}</td>`;
+    tbl.appendChild(tr);
+  });
+  statsCard.appendChild(tbl);
+  container.appendChild(statsCard);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function makeCard(title) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  if (title) {
+    const t = document.createElement('div');
+    t.className = 'card-title';
+    t.textContent = title;
+    card.appendChild(t);
+  }
+  return card;
+}
+
+function makeBarChart(legs, valFn, maxVal, colorFn, fmtFn, note) {
+  const wrap = document.createElement('div');
+  const chart = document.createElement('div');
+  chart.className = 'bar-chart';
+
+  legs.forEach(leg => {
+    const val    = valFn(leg);
+    const pct    = maxVal > 0 ? (val / maxVal) * 100 : 0;
+    const color  = colorFn(leg);
+    const barCol = document.createElement('div');
+    barCol.className = 'bar-col';
+    barCol.innerHTML = `
+      <div class="bar-val">${fmtFn(val)}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="height:${pct}%;background:${color};"></div>
+      </div>
+      <div class="bar-lbl">${leg}</div>`;
+    chart.appendChild(barCol);
+  });
+
+  const noteEl = document.createElement('p');
+  noteEl.style.cssText = 'font-size:.72rem;color:var(--muted);margin-top:10px;text-align:center;';
+  noteEl.textContent = note;
+
+  wrap.appendChild(chart);
+  wrap.appendChild(noteEl);
+  return wrap;
+}
+
+function makeCompSign(label, sub, val, warnThresh, maxVal, unit, forceColor) {
+  const pct   = Math.min((val / maxVal) * 100, 100);
+  const color = forceColor || (val >= warnThresh ? 'var(--orange)' : 'var(--green)');
+  const el    = document.createElement('div');
+  el.className = 'comp-row';
+  el.style.flexDirection = 'column';
+  el.style.alignItems    = 'flex-start';
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+      <div>
+        <div class="comp-lbl">${label}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${sub}</div>
+      </div>
+      <div class="comp-val" style="color:${color}">${typeof val==='number'?val.toFixed(1):val}${unit}</div>
+    </div>
+    <div class="comp-bar" style="width:100%;margin-top:8px;">
+      <div class="comp-fill" style="width:${pct}%;background:${color};height:100%;border-radius:999px;"></div>
+    </div>`;
+  return el;
+}
+</script>

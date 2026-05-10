@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Model weights (large binary files)
+*.pt
+*.pth
+*.onnx
+*.weights
+
+# Uploaded/output videos
+uploads/
+outputs/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Node
+dog-gait-ui/node_modules/
+dog-gait-ui/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Env files
+.env
+.env.*
+
+# Temp files
+_gen_frontend.py
+_write_frontend.py
