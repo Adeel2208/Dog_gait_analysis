@@ -338,6 +338,51 @@ def infer_frame(
     return frame, stats, None
 
 
+# ── H.264 re-encoder (browser-compatible) ─────────────────────────────────────
+
+def _reencode_h264(output_path: str) -> None:
+    """
+    Re-encode the mp4v output to H.264 using the bundled ffmpeg from
+    imageio-ffmpeg so browsers can play it natively.
+    Falls back silently if re-encoding fails (mp4v still works for download).
+    """
+    import subprocess, shutil
+    try:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        print("[video] imageio-ffmpeg not installed — skipping H.264 re-encode")
+        return
+
+    tmp_path = output_path.replace(".mp4", "_h264.mp4")
+    cmd = [
+        ffmpeg_exe,
+        "-y",                        # overwrite
+        "-i", output_path,           # input (mp4v)
+        "-vcodec", "libx264",        # H.264
+        "-crf", "23",                # quality (lower = better, 18-28 typical)
+        "-preset", "fast",           # encoding speed
+        "-pix_fmt", "yuv420p",       # required for browser compatibility
+        "-movflags", "+faststart",   # move moov atom to front for streaming
+        "-acodec", "copy",           # copy audio if present
+        tmp_path,
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        if result.returncode == 0 and Path(tmp_path).exists():
+            shutil.move(tmp_path, output_path)
+            print(f"[video] Re-encoded to H.264: {Path(output_path).name}")
+        else:
+            err = result.stderr.decode(errors="ignore")[-300:]
+            print(f"[video] ffmpeg re-encode failed: {err}")
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
+    except Exception as e:
+        print(f"[video] Re-encode error: {e}")
+        if Path(tmp_path).exists():
+            Path(tmp_path).unlink()
+
+
 # ── Full video processing ──────────────────────────────────────────────────────
 
 def process_video(
@@ -422,6 +467,9 @@ def process_video(
 
     cap.release()
     writer.release()
+
+    # ── Re-encode to H.264 so browsers can play it ─────────────────────────────
+    _reencode_h264(output_path)
 
     out_size = Path(output_path).stat().st_size / 1e6
     return {

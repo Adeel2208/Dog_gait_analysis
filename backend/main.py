@@ -32,8 +32,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Depends, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Depends, Query, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -163,6 +163,64 @@ def _run_inference(job_id: str, input_path: str, output_path: str,
         print(f"[job {job_id}] error: {e}")
 
 
+# ── Video range-request helper ─────────────────────────────────────────────────
+
+def _range_response(file_path: str, request: Request):
+    """
+    Serve a video file with HTTP range request support.
+    Browsers require this for the <video> element to seek and play correctly.
+    """
+    file_size = Path(file_path).stat().st_size
+    range_header = request.headers.get("range")
+
+    if range_header:
+        # Parse "bytes=start-end"
+        byte_range = range_header.replace("bytes=", "").strip()
+        parts = byte_range.split("-")
+        start = int(parts[0]) if parts[0] else 0
+        end   = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
+        end   = min(end, file_size - 1)
+        chunk_size = end - start + 1
+
+        def iter_file():
+            with open(file_path, "rb") as f:
+                f.seek(start)
+                remaining = chunk_size
+                while remaining > 0:
+                    data = f.read(min(65536, remaining))
+                    if not data:
+                        break
+                    remaining -= len(data)
+                    yield data
+
+        headers = {
+            "Content-Range":  f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges":  "bytes",
+            "Content-Length": str(chunk_size),
+            "Content-Type":   "video/mp4",
+            "Cache-Control":  "no-cache",
+        }
+        return StreamingResponse(iter_file(), status_code=206, headers=headers)
+
+    # Full file response with Accept-Ranges header
+    def iter_full():
+        with open(file_path, "rb") as f:
+            while True:
+                data = f.read(65536)
+                if not data:
+                    break
+                yield data
+
+    headers = {
+        "Accept-Ranges":  "bytes",
+        "Content-Length": str(file_size),
+        "Content-Type":   "video/mp4",
+        "Cache-Control":  "no-cache",
+        "Content-Disposition": f'inline; filename="rescueai_output.mp4"',
+    }
+    return StreamingResponse(iter_full(), status_code=200, headers=headers)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -265,7 +323,7 @@ def get_status(job_id: str):
 
 
 @app.get("/result/{job_id}")
-def get_result(job_id: str):
+def get_result(job_id: str, request: Request):
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job not found")
     job = jobs[job_id]
@@ -274,8 +332,7 @@ def get_result(job_id: str):
     output_path = job["output"]
     if not Path(output_path).exists():
         raise HTTPException(status_code=404, detail="Output file missing")
-    return FileResponse(output_path, media_type="video/mp4",
-                        filename=f"rescueai_{job_id[:8]}.mp4")
+    return _range_response(output_path, request)
 
 
 @app.get("/summary/{job_id}")
